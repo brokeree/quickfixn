@@ -230,7 +230,7 @@ namespace QuickFix
         /// <summary>
         /// Returns whether the Session has a Responder. This method is synchronized
         /// </summary>
-        public bool HasResponder { get { lock (sync_) { return null != responder_; } } }
+        public bool HasResponder => null != responder_;
 
         /// <summary>
         /// Returns whether the Sessions will allow ResetSequence messages sent as
