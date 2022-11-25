@@ -19,6 +19,7 @@ namespace QuickFix.DataDictionary
         public Dictionary<String, DDField> FieldsByName = new Dictionary<string, DDField>();
         public Dictionary<String, DDMap> Messages = new Dictionary<string, DDMap>();
         private XmlDocument RootDoc;
+        private Dictionary<String, XmlNode> ComponentsByName = new Dictionary<string, XmlNode>();
 
         public bool CheckFieldsOutOfOrder { get; set; }
         public bool CheckFieldsHaveValues { get; set; }
@@ -466,6 +467,7 @@ namespace QuickFix.DataDictionary
                 RootDoc.Load(reader);
                 SetVersionInfo(RootDoc);
                 ParseFields(RootDoc);
+                CacheComponents(RootDoc);
                 ParseMessages(RootDoc);
                 ParseHeader(RootDoc);
                 ParseTrailer(RootDoc);
@@ -502,6 +504,15 @@ namespace QuickFix.DataDictionary
                 DDField fld = NewField(fldEl);
                 FieldsByTag[fld.Tag] = fld;
                 FieldsByName[fld.Name] = fld;
+            }
+        }
+
+        private void CacheComponents(XmlDocument doc)
+        {
+            XmlNodeList nodeList = doc.SelectNodes("//components/component");
+            foreach (XmlNode compEl in nodeList)
+            {
+                ComponentsByName[compEl.Attributes["name"].Value] = compEl;
             }
         }
 
@@ -648,7 +659,7 @@ namespace QuickFix.DataDictionary
                         break;
 
                     case "component":
-                        XmlNode compNode = RootDoc.SelectSingleNode("//components/component[@name='" + nameAttribute + "']");
+                        XmlNode compNode = ComponentsByName[nameAttribute];
                         ParseMsgEl(compNode, ddmap, (childNode.Attributes["required"]?.Value == "Y"));
                         break;
 
