@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
 using System.Threading;
+using QuickFix.Logger;
+using QuickFix.Store;
 
 namespace UnitTests
 {
@@ -62,7 +64,7 @@ namespace UnitTests
                 Console.WriteLine(String.Format("  {0}: count {1}", key, msgLookup[key].Count));
                 foreach (QuickFix.Message m in msgLookup[key])
                 {
-                    Console.WriteLine("  - " + m.ToString());
+                    Console.WriteLine("  - " + m.ConstructString());
                 }
             }
         }
@@ -174,7 +176,7 @@ namespace UnitTests
         MockApplication application = null;
         QuickFix.Session session = null;
         QuickFix.Session session2 = null;
-        QuickFix.Dictionary config = null;
+        QuickFix.SettingsDictionary config = null;
         SeqNumType seqNum = 1;
         Regex msRegex = new Regex(@"\.[\d]{1,3}$");
         Regex microsecondRegex = new Regex(@"\.[\d]{1,6}$");
@@ -187,23 +189,23 @@ namespace UnitTests
             application = new MockApplication();
             settings = new QuickFix.SessionSettings();
 
-            config = new QuickFix.Dictionary();
+            config = new QuickFix.SettingsDictionary();
             config.SetBool(QuickFix.SessionSettings.PERSIST_MESSAGES, false);
             config.SetString(QuickFix.SessionSettings.CONNECTION_TYPE, "initiator");
             config.SetString(QuickFix.SessionSettings.START_TIME, "00:00:00");
             config.SetString(QuickFix.SessionSettings.END_TIME, "00:00:00");
             settings.Set(sessionID, config);
 
-            var logFactory = new QuickFix.NullLogFactory(); // use QuickFix.ScreenLogFactory(settings) if you need to see output
+            var logFactory = new NullLogFactory(); // use QuickFix.ScreenLogFactory(settings) if you need to see output
 
             // acceptor
-            session = new QuickFix.Session(false, application, new QuickFix.MemoryStoreFactory(), sessionID,
+            session = new QuickFix.Session(false, application, new MemoryStoreFactory(), sessionID,
                 new QuickFix.DataDictionaryProvider(),new QuickFix.SessionSchedule(config), 0, logFactory, new QuickFix.DefaultMessageFactory(), "blah");
             session.SetResponder(responder);
             session.CheckLatency = false;
 
             // initiator
-            session2 = new QuickFix.Session(true, application, new QuickFix.MemoryStoreFactory(), new QuickFix.SessionID("FIX.4.2", "OTHER_SENDER", "OTHER_TARGET"),
+            session2 = new QuickFix.Session(true, application, new MemoryStoreFactory(), new QuickFix.SessionID("FIX.4.2", "OTHER_SENDER", "OTHER_TARGET"),
                 new QuickFix.DataDictionaryProvider(), new QuickFix.SessionSchedule(config), 0, logFactory, new QuickFix.DefaultMessageFactory(), "blah");
             session2.SetResponder(responder);
             session2.CheckLatency = false;
@@ -228,7 +230,7 @@ namespace UnitTests
             msg.Header.SetField(new QuickFix.Fields.MsgSeqNum(seqNum++));
             msg.Header.SetField(new QuickFix.Fields.SendingTime(System.DateTime.UtcNow));
             msg.SetField(new QuickFix.Fields.HeartBtInt(1));
-            session.Next(msg.ToString());
+            session.Next(msg.ConstructString());
         }
 
         public bool SENT_SEQUENCE_RESET()
@@ -345,7 +347,7 @@ namespace UnitTests
             order.Header.SetField(new QuickFix.Fields.SenderCompID(sessionID.TargetCompID));
             order.Header.SetField(new QuickFix.Fields.MsgSeqNum(seqNum++));
 
-            session.Next(order.ToString());
+            session.Next(order.ConstructString());
         }
 
         public void SendResendRequest(SeqNumType begin, SeqNumType end)
@@ -368,7 +370,7 @@ namespace UnitTests
             msg.Header.SetField(new QuickFix.Fields.SenderCompID(sessionID.TargetCompID));
             msg.Header.SetField(new QuickFix.Fields.MsgSeqNum(seqNum++));
 
-            session.Next(msg.ToString());
+            session.Next(msg.ConstructString());
         }
 
         [Test]
@@ -719,10 +721,10 @@ namespace UnitTests
 
             reset.Header.SetField(new QuickFix.Fields.MsgSeqNum(2));
             reset.SetField(new QuickFix.Fields.NewSeqNo(2501));
-            session.Next(reset.ToString());
+            session.Next(reset.ConstructString());
 
             order.Header.SetField(new QuickFix.Fields.MsgSeqNum(2501));
-            session.Next(order.ToString());
+            session.Next(order.ConstructString());
 
             // Should have triggered next resend (2502->5001), check this
             //Console.WriteLine(responder.msgLookup[QuickFix.Fields.MsgType.RESENDREQUEST].Count);
@@ -734,10 +736,10 @@ namespace UnitTests
             // Jump forward to the end of the resend chunk with a fillgap reset message
             reset.Header.SetField(new QuickFix.Fields.MsgSeqNum(2502));
             reset.SetField(new QuickFix.Fields.NewSeqNo(5001));
-            session.Next(reset.ToString());
+            session.Next(reset.ConstructString());
 
             order.Header.SetField(new QuickFix.Fields.MsgSeqNum(5001));
-            session.Next(order.ToString());   // Triggers next resend (5002->5005)
+            session.Next(order.ConstructString());   // Triggers next resend (5002->5005)
 
             //Console.WriteLine(responder.msgLookup[QuickFix.Fields.MsgType.RESENDREQUEST].Count);
             Assert.That(responder.msgLookup[QuickFix.Fields.MsgType.RESENDREQUEST].Count == 1);
@@ -919,8 +921,8 @@ namespace UnitTests
         public void TestApplicationExtension()
         {
             var mockApp = new MockApplicationExt();
-            session = new QuickFix.Session(true, mockApp, new QuickFix.MemoryStoreFactory(), sessionID,
-                new QuickFix.DataDictionaryProvider(), new QuickFix.SessionSchedule(config), 0, new QuickFix.NullLogFactory(), new QuickFix.DefaultMessageFactory(), "blah");
+            session = new QuickFix.Session(true, mockApp, new MemoryStoreFactory(), sessionID,
+                new QuickFix.DataDictionaryProvider(), new QuickFix.SessionSchedule(config), 0, new NullLogFactory(), new QuickFix.DefaultMessageFactory(), "blah");
             session.SetResponder(responder);
             session.CheckLatency = false;
 
@@ -937,7 +939,7 @@ namespace UnitTests
             order.Header.SetField(new QuickFix.Fields.SenderCompID(sessionID.TargetCompID));
             order.Header.SetField(new QuickFix.Fields.MsgSeqNum(2));
 
-            session.Next(order.ToString());
+            session.Next(order.ConstructString());
 
             Assert.That(mockApp.InterceptedMessageTypes.Count, Is.EqualTo(2));
             Assert.True(mockApp.InterceptedMessageTypes.Contains(QuickFix.Fields.MsgType.LOGON));

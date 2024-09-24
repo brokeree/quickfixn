@@ -91,8 +91,7 @@ namespace QuickFix.DataDictionary
 
             if (((null != sessionDataDict) && sessionDataDict.CheckFieldsOutOfOrder) || ((null != appDataDict) && appDataDict.CheckFieldsOutOfOrder))
             {
-                int field;
-                if (!message.HasValidStructure(out field))
+                if (!message.HasValidStructure(out var field))
                     throw new TagOutOfOrder(field);
             }
 
@@ -306,11 +305,11 @@ namespace QuickFix.DataDictionary
                     Fields.Converters.BoolConverter.Convert(field.ToString());
 
                 else if (type == typeof(DateTimeField))
-                    Fields.Converters.DateTimeConverter.ConvertToDateTime(field.ToString());
+                    Fields.Converters.DateTimeConverter.ParseToDateTime(field.ToString());
                 else if (type == typeof(DateOnlyField))
-                    Fields.Converters.DateTimeConverter.ConvertToDateOnly(field.ToString());
+                    Fields.Converters.DateTimeConverter.ParseToDateOnly(field.ToString());
                 else if (type == typeof(TimeOnlyField))
-                    Fields.Converters.DateTimeConverter.ConvertToTimeOnly(field.ToString());
+                    Fields.Converters.DateTimeConverter.ParseToTimeOnly(field.ToString());
                 return;
 
             }

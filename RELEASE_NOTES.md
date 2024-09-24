@@ -8,6 +8,116 @@ QuickFIX/n is a .NET port of QuickFIX, an open source C++ FIX engine.
 What's New
 ----------
 
+**CAUTION:**  
+* **1.13.0 has moved to .NET 8 (as Microsoft is ending .NET 6 support on Nov 12, 2024)
+* **There are breaking changes between 1.12 and 1.13!  Please review the 1.12.0 notes below.**
+* **There are breaking changes between 1.11 and 1.12!  Please review the 1.12.0 notes below.**
+* **There are breaking changes between 1.10 and 1.11!  Please review the 1.11.0 notes below.**
+
+
+### upcoming v1.13.0
+
+**Breaking changes**
+* #883 - Moved to .NET 8 (huypn12)
+* #878 - corrections to tag 45 "Side" in various DDs (gbirchmeier) - most people won't notice, easy fix if they do
+     * fix typo in FIX50 and FIX50SP1: `CROSS_SHORT_EXXMPT` fixed to `CROSS_SHORT_EXEMPT`
+     * correction in FIX41 and FIX42: `D` to `UNDISCLOSED`
+* #863 - Change Message.ToString() to not alter object state anymore. (gbirchmeier)
+         Use new function Message.ConstructString() if you need BodyLength/CheckSum to be updated.
+
+**Non-breaking changes**
+* #864 - when multiple threads race to init DefaultMessageFactory,
+         fix it so that later threads do not return before the first thread
+         finishes loading all the dlls (gbirchmeier, with thanks to diagnosis by Brian Leach aka baffled)
+         (Note: this may be the cause of spurious "incorrect BeginString" issues that have been observed)
+* #877 - throw an exception if Message.ToJSON(dd=null,convertEnumsToDescriptions=true) is called (gbirchmeier)
+
+### v1.12.0
+
+**Breaking changes**
+* #768 - span-ify parser (Rob-Hague) - makes a change to QuickFix.Parser interface, which isn't likely to affect users
+* #820 - cleanup/nullable-ize initiator/acceptor files (gbirchmeier) -
+         changed some Session Generate* functions to return void instead of null, 
+         very low likelihood that any user code will be affected.
+* #821 - delete dead code: ByteSizeString class & test, do-nothing ConfigTest (gbirchmeier) -
+         ByteSizeString is public, but probably no one uses it
+* #822 - cleanup/nullable-ize Message/ classes (gbirchmeier)
+     * FieldMap: getFieldOrder() deleted.  Just call FieldOrder.
+     * FieldMap: GetGroup(int num, Group group) now returns void instead of redundant Group
+     * Group: rename Field to CounterField
+     * Message: changed `SOH`'s type from string to char
+     * Message: ctor Message(string msgstr, DataDictionary.DataDictionary dataDictionary, bool validate) deleted.
+       You can use the 2-DD version, though for FIX4 those DDs will be the same.
+     * Message: ExtractField()'s 2 DD params removed.  They were never used.
+     * Message: static GetFieldOrDefault() changed to private.  Unlikely anyone will notice.
+     * Message: static GetReverseSessionID(Message) changed to private.  Unlikely anyone will notice.
+       (The version with the string param is still public)
+     * Message: FromStringHeader renamed and made private.  Unlikely anyone will notice.
+     * Message: ToXML() and ToJSON() require DD params for any tag/enum translation.
+       (Message no longer stores a DD instance var.)
+       These functions are new, probably not widely used yet.
+       Function docs are now clear on this behavior.
+* #826 - cleanup/nullable-ize Socket & Session classes (gbirchmeier)
+     * ClientHandlerThread is now internal.  Unlikely anyone will notice.
+     * SocketReader: delete public ctor.  Probably no one is using it.
+     * Session: rename (capitalize) TargetDefaultApplVerId property
+     * SessionState: ctor now requires a MessageStore.  (Existing callers used an object initializer anyway)
+     * Many protected functions were altered, but probably no user code is touching them
+* #827 - cleanup/nullable-ize StreamFactory, SessionID, Settings, SessionSettings, SessionSchedule (gbirchmeier)
+     * StreamFactory: privatized a lot of members; I don't think users are inheriting from this
+     * SessionSchedule: remove unused LastEndTime()
+* #831 - cleanup/nullable-ize Logging/Store classes, fix path-separator bug (gbirchmeier)
+     * Move all logger classes to new QuickFix.Logger namespace
+     * Move all store classes to new QuickFix.Store namespace
+     * FileLog: remove the single-param ctor, no reason for anyone to use it
+     * ScreenLog ctor: removed unused sessionId param
+     * ScreenLogFactory: remove unused public vars
+* #708 - In FIX50, rename field SecurityStat to SecurityStatus, to match SP1 and SP2 (gbirchmeier)
+* #639 - address Dictionary ctor bug, then cleanup/nullable-ize (gbirchmeier)
+     * rename to SettingsDictionary to reduce name confusion with System.Collections.Generic.Dictionary
+     * privatize a ctor that takes a generic Dict; apps shouldn't use it
+     * remove the copy ctor that takes only a SessionDict; replace it with one
+       that explicitly requires a name also
+* #842 - Fix nano-datetime-to-string bug (gbirchmeier)
+     * Also refactor the heck out of DateTimeConverter & tests: many functions renamed/deprecated
+* #847 - remove setting MillisecondsInTimeStamp (gbirchmeier)
+     * Use TimestampPrecision instead (same as QF/j)
+* #830 - replace ClientThreadHandler "Debug" logs with NonSessionLog (gbirchmeier)
+     * ILogFactory extended with a `CreateNonSessionLog()`.  Pretty easy to implement though.
+     * Some classes were internalized, but I can't imagine people are using them in their app code.
+     * See details/explanation at https://github.com/connamara/quickfixn/pull/830
+
+**Non-breaking changes**
+* #400 - added DDTool, a C#-based codegen, and deleted Ruby-based generator (gbirchmeier)
+* #811 - convert AT platform to be NUnit-based, get rid of Ruby runner (Rob-Hague)
+* #813 - fix incorrect logging of acceptor heartbeat (gbirchmeier)
+* #815 - update broken/neglected example apps & docs (gbirchmeier)
+* #764 - fix positive UTC offset parsing in DateTimeConverter (Rob-Hague)
+* #766 - use ordinal string operations (Rob-Hague)
+* #767 - avoid string conversions in FieldMap.Get{FieldType} where possible (Rob-Hague)
+* #785 - use correct SocketError "Shutdown" code when socket is deliberately shutdown (oclancy)
+* #711 - fix explicit 0.0.0.0 address binding (bohdanstefaniuk)
+* #823 - get rid of IOIQty enums in FIX5 DDs, allow free string (gbirchmeier)
+* #786 - rewrite HttpServer: better HTML, no crash on errors (gbirchmeier)
+* #697 - new SocketIgnoreProxy setting (ABSJ415)
+* #740 - Capture inner exception messages when handling authentication exceptions (rars)
+* #833 - Add Try/Catch logic to SocketInitiator.OnStart() (Falcz)
+* #782 - proper handling of XmlData field (larsope)
+* #770 - fix unobserved SocketException
+    * Perform socket read operations according to Task-based asynchronous pattern (TAP) instead of Asynchronous
+      Programming Model (APM), in order to catch unobserved SocketExceptions (nmandzyk)
+    * Cleanup/nullable-ize SocketInitiatorThread (gbirchmeier)
+* #839 - change ScreenLog to output FIX messages with "|" instead of non-visible SOH (gbirchmeier)
+* #844 - implement "Weekdays" setting (MichalUssuri/gbirchmeier)
+* #859 - implement proper path searching for CA certs in config (gbirchmeier)
+
+### v1.11.2:
+* same as v1.11.1, but I fixed the readme in the pushed nuget packages
+
+### v1.11.1:
+* #793 - Continuous Markets bugfix: make DD treat SEQNUM as ULong, not Int (gbirchmeier)
+* #790/#787 - break up monolithic release script, add symbols & DD to nugets/zip, delete old scripts (gbirchmeier)
+
 ### v1.11.0:
 This build removes deprecations, and also updates to .NET 6.0.  
 We decided this wasn't big enough to warrant a v2 release, even though

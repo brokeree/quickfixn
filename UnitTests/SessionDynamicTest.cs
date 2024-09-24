@@ -8,6 +8,8 @@ using System.Text.RegularExpressions;
 
 using NUnit.Framework;
 using QuickFix;
+using QuickFix.Logger;
+using QuickFix.Store;
 using QuickFix.Transport;
 
 namespace UnitTests
@@ -75,9 +77,9 @@ namespace UnitTests
         HashSet<string> _loggedOnCompIDs;
         Socket _listenSocket;
 
-        Dictionary CreateSessionConfig(string targetCompID, bool isInitiator)
+        SettingsDictionary CreateSessionConfig(string targetCompID, bool isInitiator)
         {
-            Dictionary settings = new Dictionary();
+            SettingsDictionary settings = new SettingsDictionary();
             settings.SetString(SessionSettings.CONNECTION_TYPE, isInitiator ? "initiator" : "acceptor");
             settings.SetString(SessionSettings.USE_DATA_DICTIONARY, "N");
             settings.SetString(SessionSettings.START_TIME, "12:00:00");
@@ -118,7 +120,7 @@ namespace UnitTests
             TestApplication application = new TestApplication(LogonCallback, LogoffCallback);
             IMessageStoreFactory storeFactory = new MemoryStoreFactory();
             SessionSettings settings = new SessionSettings();
-            Dictionary defaults = new Dictionary();
+            SettingsDictionary defaults = new SettingsDictionary();
             defaults.SetString(QuickFix.SessionSettings.FILE_LOG_PATH, _logPath);
 
             // Put IP endpoint settings into default section to verify that that defaults get merged into
@@ -346,7 +348,7 @@ namespace UnitTests
             msg.Header.SetField(new QuickFix.Fields.SendingTime(System.DateTime.UtcNow));
             msg.SetField(new QuickFix.Fields.HeartBtInt(300));
             // Simple logon message
-            s.Send(CharEncoding.DefaultEncoding.GetBytes(msg.ToString()));
+            s.Send(CharEncoding.DefaultEncoding.GetBytes(msg.ConstructString()));
         }
 
         void ClearLogs()

@@ -2,12 +2,10 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFrameworks>netcoreapp2.0</TargetFrameworks>
-    <RootNamespace>FixToJson</RootNamespace>
-    <AssemblyName>FixToJson</AssemblyName>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
     <Copyright>Copyright © Connamara Systems, LLC 2022</Copyright>
     <Company>Connamara Systems, LLC</Company>
-    <Platforms>AnyCPU;x64</Platforms>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 

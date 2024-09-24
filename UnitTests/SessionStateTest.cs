@@ -5,6 +5,8 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
+using QuickFix.Logger;
+using QuickFix.Store;
 
 namespace UnitTests
 {
@@ -139,7 +141,7 @@ namespace UnitTests
 
             SessionID sessionId = new SessionID("FIX.4.2", "SENDERCOMP", "TARGETCOMP");
 
-            Dictionary config = new Dictionary();
+            SettingsDictionary config = new SettingsDictionary();
             config.SetString(SessionSettings.CONNECTION_TYPE, "initiator");
             config.SetString(SessionSettings.FILE_STORE_PATH, storeDirectory);
 
@@ -152,7 +154,7 @@ namespace UnitTests
             NullLog log = new NullLog();
 
             //Set up sessionstate
-            SessionState state = new SessionState(true, log, 1) {MessageStore = store};
+            SessionState state = new SessionState(true, log, 1, store);
 
             Hashtable errorsTable = Hashtable.Synchronized(new Hashtable());//used in more than 1 thread at a time
             Hashtable setTable = new Hashtable(1000);//only used in 1 thread at a time
