@@ -1,5 +1,4 @@
-﻿#nullable enable
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -37,7 +36,6 @@ namespace QuickFix
         internal ThreadedSocketReactor(
             IPEndPoint serverSocketEndPoint,
             SocketSettings socketSettings,
-            SettingsDictionary sessionDict,
             AcceptorSocketDescriptor? acceptorSocketDescriptor,
             NonSessionLog nonSessionLog)
         {
