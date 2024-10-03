@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Net;
 using System;
+using QuickFix.DataDictionary;
 using QuickFix.Logger;
 using QuickFix.Store;
 
@@ -32,17 +33,20 @@ namespace QuickFix
         /// <param name="settings"></param>
         /// <param name="logFactory">If null, a NullFactory will be used.</param>
         /// <param name="messageFactory">If null, a DefaultMessageFactory will be created (using settings parameters)</param>
+        /// <param name="ddProviderFactory">If null, a DefaultDataDictionaryProviderFactory will be created</param>
         public ThreadedSocketAcceptor(
             IApplication application,
             IMessageStoreFactory storeFactory,
             SessionSettings settings,
             ILogFactory? logFactory = null,
-            IMessageFactory? messageFactory = null)
+            IMessageFactory? messageFactory = null,
+            IDataDictionaryProviderFactory? ddProviderFactory = null)
         {
             ILogFactory lf = logFactory ?? new NullLogFactory();
             IMessageFactory mf = messageFactory ?? new DefaultMessageFactory();
+            IDataDictionaryProviderFactory ddProviderFactoryValue = ddProviderFactory ?? new DefaultDataDictionaryProviderFactory();
             _settings = settings;
-            _sessionFactory = new SessionFactory(application, storeFactory, lf, mf);
+            _sessionFactory = new SessionFactory(application, storeFactory, lf, mf, ddProviderFactoryValue);
             _nonSessionLog = new NonSessionLog(lf);
 
             try

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using QuickFix.DataDictionary;
 using QuickFix.Logger;
 using QuickFix.Store;
 using QuickFix.Util;
@@ -15,13 +16,14 @@ namespace QuickFix
         protected IMessageStoreFactory _messageStoreFactory;
         protected ILogFactory _logFactory;
         protected IMessageFactory _messageFactory;
-        protected Dictionary<string, DataDictionary.DataDictionary> _dictionariesByPath = new();
+        protected IDataDictionaryProviderFactory _dataDictionaryProviderFactory;
 
         public SessionFactory(
             IApplication app,
             IMessageStoreFactory storeFactory,
             ILogFactory? logFactory = null,
-            IMessageFactory? messageFactory = null)
+            IMessageFactory? messageFactory = null,
+            IDataDictionaryProviderFactory? dataDictionaryProviderFactory = null)
         {
             // TODO: for V2, consider ONLY instantiating MessageFactory in the Create() method,
             //   and removing instance var _messageFactory altogether.
@@ -33,6 +35,7 @@ namespace QuickFix
             _messageStoreFactory = storeFactory;
             _logFactory = logFactory ?? new NullLogFactory();
             _messageFactory = messageFactory ?? new DefaultMessageFactory();
+            _dataDictionaryProviderFactory = dataDictionaryProviderFactory ?? new DefaultDataDictionaryProviderFactory();
         }
 
         private static bool DetectIfInitiator(SettingsDictionary settings)
@@ -51,10 +54,6 @@ namespace QuickFix
 
             if (!isInitiator && settings.Has(SessionSettings.SESSION_QUALIFIER))
                 throw new ConfigError("SessionQualifier cannot be used with acceptor.");
-
-            bool useDataDictionary = true;
-            if (settings.Has(SessionSettings.USE_DATA_DICTIONARY))
-                useDataDictionary = settings.GetBool(SessionSettings.USE_DATA_DICTIONARY);
 
             QuickFix.Fields.ApplVerID? defaultApplVerId = null;
             IMessageFactory sessionMsgFactory = _messageFactory;
@@ -79,14 +78,7 @@ namespace QuickFix
                 }
             }
 
-            DataDictionaryProvider dd = new DataDictionaryProvider();
-            if (useDataDictionary)
-            {
-                if (sessionId.IsFIXT)
-                    ProcessFixTDataDictionaries(sessionId, settings, dd);
-                else
-                    ProcessFixDataDictionary(sessionId, settings, dd);
-            }
+            var dd = _dataDictionaryProviderFactory.CreateDataDictionaryProvider(sessionId, settings);
 
             int heartBtInt = 0;
             if (isInitiator)
@@ -158,73 +150,6 @@ namespace QuickFix
                 session.RequiresOrigSendingTime = settings.GetBool(SessionSettings.RESETSEQUENCE_MESSAGE_REQUIRES_ORIGSENDINGTIME);
 
             return session;
-        }
-
-        protected DataDictionary.DataDictionary CreateDataDictionary(SessionID sessionId, SettingsDictionary settings, string settingsKey, string beginString)
-        {
-            string path;
-            if (settings.Has(settingsKey))
-                path = settings.GetString(settingsKey);
-            else
-                path = beginString.Replace(".", "") + ".xml";
-
-            path = StringUtil.FixSlashes(path);
-
-            DataDictionary.DataDictionary? dd;
-            if (!_dictionariesByPath.TryGetValue(path, out dd))
-            {
-                dd = new DataDictionary.DataDictionary(path);
-                _dictionariesByPath[path] = dd;
-            }
-
-            DataDictionary.DataDictionary ddCopy = new DataDictionary.DataDictionary(dd);
-
-            if (settings.Has(SessionSettings.VALIDATE_FIELDS_OUT_OF_ORDER))
-                ddCopy.CheckFieldsOutOfOrder = settings.GetBool(SessionSettings.VALIDATE_FIELDS_OUT_OF_ORDER);
-            if (settings.Has(SessionSettings.VALIDATE_FIELDS_HAVE_VALUES))
-                ddCopy.CheckFieldsHaveValues = settings.GetBool(SessionSettings.VALIDATE_FIELDS_HAVE_VALUES);
-            if (settings.Has(SessionSettings.VALIDATE_USER_DEFINED_FIELDS))
-                ddCopy.CheckUserDefinedFields = settings.GetBool(SessionSettings.VALIDATE_USER_DEFINED_FIELDS);
-            if (settings.Has(SessionSettings.ALLOW_UNKNOWN_MSG_FIELDS))
-                ddCopy.AllowUnknownMessageFields = settings.GetBool(SessionSettings.ALLOW_UNKNOWN_MSG_FIELDS);
-
-            return ddCopy;
-        }
-
-        protected void ProcessFixTDataDictionaries(SessionID sessionId, SettingsDictionary settings, DataDictionaryProvider provider)
-        {
-            provider.AddTransportDataDictionary(sessionId.BeginString, CreateDataDictionary(sessionId, settings, SessionSettings.TRANSPORT_DATA_DICTIONARY, sessionId.BeginString));
-    
-            foreach (KeyValuePair<string, string> setting in settings)
-            {
-                if (setting.Key.StartsWith(SessionSettings.APP_DATA_DICTIONARY, System.StringComparison.CurrentCultureIgnoreCase))
-                {
-                    if (setting.Key.Equals(SessionSettings.APP_DATA_DICTIONARY, System.StringComparison.CurrentCultureIgnoreCase))
-                    {
-                        Fields.ApplVerID applVerId = Message.GetApplVerID(settings.GetString(SessionSettings.DEFAULT_APPLVERID));
-                        DataDictionary.DataDictionary dd = CreateDataDictionary(sessionId, settings, SessionSettings.APP_DATA_DICTIONARY, sessionId.BeginString);
-                        provider.AddApplicationDataDictionary(applVerId.Value, dd);
-                    }
-                    else
-                    {
-                        int offset = setting.Key.IndexOf('.');
-                        if (offset == -1)
-                            throw new ArgumentException(
-                                $"Malformed {SessionSettings.APP_DATA_DICTIONARY} : {setting.Key}");
-
-                        string beginStringQualifier = setting.Key.Substring(offset);
-                        DataDictionary.DataDictionary dd = CreateDataDictionary(sessionId, settings, setting.Key, beginStringQualifier);
-                        provider.AddApplicationDataDictionary(Message.GetApplVerID(beginStringQualifier).Value, dd);
-                    }
-                }
-            }
-        }
-
-        protected void ProcessFixDataDictionary(SessionID sessionId, SettingsDictionary settings, DataDictionaryProvider provider)
-        {
-            DataDictionary.DataDictionary dataDictionary = CreateDataDictionary(sessionId, settings, SessionSettings.DATA_DICTIONARY, sessionId.BeginString);
-            provider.AddTransportDataDictionary(sessionId.BeginString, dataDictionary);
-            provider.AddApplicationDataDictionary(FixValues.ApplVerID.FromBeginString(sessionId.BeginString), dataDictionary);
         }
     }
 }

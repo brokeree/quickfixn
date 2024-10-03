@@ -1,6 +1,7 @@
 ﻿using System.Threading;
 using System.Collections.Generic;
 using System;
+using QuickFix.DataDictionary;
 using QuickFix.Logger;
 using QuickFix.Store;
 
@@ -29,12 +30,14 @@ namespace QuickFix
             IMessageStoreFactory storeFactory,
             SessionSettings settings,
             ILogFactory? logFactoryNullable,
-            IMessageFactory? messageFactoryNullable)
+            IMessageFactory? messageFactoryNullable,
+            IDataDictionaryProviderFactory? ddProviderFactoryNullable)
         {
             _settings = settings;
             var logFactory = logFactoryNullable ?? new NullLogFactory();
             var msgFactory = messageFactoryNullable ?? new DefaultMessageFactory();
-            _sessionFactory = new SessionFactory(app, storeFactory, logFactory, msgFactory);
+            var ddProviderFactory = ddProviderFactoryNullable ?? new DefaultDataDictionaryProviderFactory();
+            _sessionFactory = new SessionFactory(app, storeFactory, logFactory, msgFactory, ddProviderFactory);
             _nonSessionLog = new NonSessionLog(logFactory);
 
             HashSet<SessionID> definedSessions = _settings.GetSessions();

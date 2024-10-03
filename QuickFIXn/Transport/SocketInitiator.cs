@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using QuickFix.DataDictionary;
 using QuickFix.Logger;
 using QuickFix.Store;
 
@@ -32,9 +33,11 @@ namespace QuickFix.Transport
             IMessageStoreFactory storeFactory,
             SessionSettings settings,
             ILogFactory? logFactoryNullable = null,
-            IMessageFactory? messageFactoryNullable = null)
-            : base(application, storeFactory, settings, logFactoryNullable, messageFactoryNullable)
-        { }
+            IMessageFactory? messageFactoryNullable = null,
+            IDataDictionaryProviderFactory? ddProviderFactory = null)
+            : base(application, storeFactory, settings, logFactoryNullable, messageFactoryNullable, ddProviderFactory)
+        {
+        }
 
         public static void SocketInitiatorThreadStart(object? socketInitiatorThread)
         {
